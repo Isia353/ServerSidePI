@@ -10,6 +10,15 @@ class EventController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+
+    function __construct()
+    {
+        $this->middleware('permission:event-list|event-create|event-edit|event-delete', ['only' => ['index','show']]);
+        $this->middleware('permission:event-create', ['only' => ['store']]);
+        $this->middleware('permission:event-edit', ['only' => ['update']]);
+        $this->middleware('permission:event-delete', ['only' => ['destroy']]);
+    }
     public function index()
     {
         $data = Event::all();

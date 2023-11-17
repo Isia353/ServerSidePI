@@ -4,9 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
+
 // Aqui se asignan o se quitan roles
 class UserController extends Controller
 {
+
+    function __construct()
+    {
+        $this->middleware('permission:user-list|user-create|user-edit|user-delete', ['only' => ['index','show']]);
+        $this->middleware('permission:user-create', ['only' => ['store']]);
+        $this->middleware('permission:user-edit', ['only' => ['update']]);
+        $this->middleware('permission:user-delete', ['only' => ['destroy']]);
+    }
     /**
      * Display a listing of the resource.
      */
@@ -30,6 +40,8 @@ class UserController extends Controller
             'phone' => $request->phone,
         ];
 
+     //   $roles = Role::pluck('name','name')->all(); todos los roles
+        //si request viene sin role , por default sera visitante
 
 
         $user = User::create($data);

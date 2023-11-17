@@ -11,6 +11,13 @@ class AnimalController extends Controller
     /**
      * Display a listing of the resource.
      */
+    function __construct()
+    {
+        $this->middleware('permission:animal-list|animal-create|animal-edit|animal-delete', ['only' => ['index','show']]);
+        $this->middleware('permission:animal-create', ['only' => ['store']]);
+        $this->middleware('permission:animal-edit', ['only' => ['update']]);
+        $this->middleware('permission:animal-delete', ['only' => ['destroy']]);
+    }
     public function index()
     {
         $data = Animal::all();

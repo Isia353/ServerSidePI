@@ -10,6 +10,13 @@ class ZoneController extends Controller
     /**
      * Display a listing of the resource.
      */
+    function __construct()
+    {
+        $this->middleware('permission:zone-list|zone-create|zone-edit|zone-delete', ['only' => ['index','show']]);
+        $this->middleware('permission:zone-create', ['only' => ['store']]);
+        $this->middleware('permission:zone-edit', ['only' => ['update']]);
+        $this->middleware('permission:zone-delete', ['only' => ['destroy']]);
+    }
     public function index()
     {
         $data = Zone::all();

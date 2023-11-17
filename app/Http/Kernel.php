@@ -72,5 +72,8 @@ class Kernel extends HttpKernel
         'DoerOrReader' => DoerOrReader::class,
         'ForceJsonResponse' => ForceJsonResponse::class,
         'cors' => Cors::class,
-        ];
+        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+    ];
 }

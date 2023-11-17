@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RoleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,12 +32,14 @@ Route::middleware(['auth:api','DoerOrReader'])->group(function () {
     Route::apiResource('/zone', \App\Http\Controllers\ZoneController::class)->except(['show',"index"]);;
     Route::apiResource('/task', \App\Http\Controllers\TaskController::class);
     Route::apiResource('/event', \App\Http\Controllers\EventController::class)->except(['show',"index"]);;
+    Route::resource('/roles', RoleController::class);
 
 });
 
 
 //Reader , no roles only view
 Route::middleware('auth:api')->group(function () {
+
 
     Route::post('/logout',[\App\Http\Controllers\Auth\ApiAuthController::class,'logout'])->name('logout.api');
     Route::get('/animal', [\App\Http\Controllers\AnimalController::class ,'index'])->name('animal-index.api');
