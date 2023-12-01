@@ -2,9 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\NoModelFound;
+use App\Http\Requests\AnimalValidator;
+use App\Http\ApiResponse;
 use App\Models\Animal;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Mockery\Exception;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AnimalController extends Controller
 {
@@ -22,94 +29,116 @@ class AnimalController extends Controller
     {
         $data = Animal::all();
 
+        if ($data->isEmpty()) {
+            return ApiResponse::error("No animal Could be indexed",404);
+        }
+
         return $data;
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(AnimalValidator $request)
     {
+        $route = $this->createRoutePhoto($request);
         $data = [
             "description" => $request->description,
             "sex" => $request->sex,
             "name" => $request->name,
-            "img" =>  $this->createRoutePhoto($request),
-            "conservation_state" => $request->conservation_state,
+            "img" =>  $this->setStringToString($route),
+            "conservation_state" => $this->setStringToString($request->conservation_state),
             "zone_id" => $request->zone_id
         ];
 
-        $newAnimal = Animal::create($data);
+            $newAnimal = Animal::create($data);
 
+            if(!$newAnimal){
+                return ApiResponse::error("Coundt save the request!",509);
+            }
         $newAnimal->save();
 
-        return response()->json(['message' => 'Guardado con exito con id -> '.$newAnimal->id], 200);
-
+        return ApiResponse::success("All good !", 200);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Animal $animal)
+    public function show(string $id)
     {
+        $animal = Animal::find($id);
 
-        $data = Animal::with('zone')->find($animal->id);
+        if (!$animal){
+            return ApiResponse::error("No animal with ".$id ." id here , sorry",404);
+        }
 
-        return $data;
+        return ApiResponse::success('Success message', 200,[$animal] );
     }
 
     /**
      * Update the specified resource in storage.
      */
     //cuidar subida de imagenes
-    public function update(Request $request, Animal $animal)
+    public function update(AnimalValidator $request,string $id)
     {
 
-        $data = Animal::find($animal->id);
+         $data = Animal::find($id);
 
-        if ($request->img) {
-            $newRoute = $this->createRoutePhoto($request);
+         $currentValues = $data->getAttributes();
+
+        if (!$data){
+            return ApiResponse::error("Coundt Get the animal to update!",509);
+        }
+        if($request->hasFile("img")){
+            $oldRoute = dirname($data->img);
+            $fileName = $this->getFileName($request);
+            $trimedFileName = $this->setStringToString($fileName);
+            $newFile = $oldRoute."/".$trimedFileName;
         }
 
-        //       UrlCreatorService::deleteStorage($data->img);
-        $data->img = $newRoute;
 
-        $data->fill($request->all());
 
+        $data->fill([
+            "description" => $request->description ?? $currentValues["description"],
+            "sex" => $request->sex ?? $currentValues["sex"],
+            "name" => $request->name ?? $currentValues["name"],
+        ]);
+        $data->img = $newFile ?? $currentValues["img"] ;
+        $data->conservation_state = $this->setStringToString($request->conservation_state) ?? $currentValues["conservation_state"] ;
+        $data->zone_id = $currentValues["zone_id"];
         $data->save();
 
-        return response()->json(['message' => 'Actualizado con exito'], 200);
+        return ApiResponse::success("All upddate with no issue !",200);
 
     }
 
     /**
      * Remove the specified resource from storage.
-     */ //al borrar tambien borrar en storage , no media que no se use
-    public function destroy(Animal $animal)
+     */
+    public function destroy($id)
     {
 
-        $data = Animal::find($animal->id);
+        $data = Animal::find($id);
 
         if (!$data) {
-            return response()->json(['message' => 'Dicho Elemento no existe'], 404);
+            ApiResponse::error("Cant delete an animal that i cant find",404);
         }
-        //  $route = $data->img;
 
-        Animal::destroy($animal->id);
+        Animal::destroy($id);
+
+        self::DeleteRoutePhoto($data->img);
 
 
-        //   UrlCreatorService::deleteStorage($route);
-
-        return response()->json(['message' => ' El elemento ha sido borrado con exito']);
+        return ApiResponse::success("Animal no longer in our database!" ,200);
 
     }
-
+    ///////// separar //////////////////////////
     public function createRoutePhoto(Request $request)
     {
 
         $uuid = Uuid::uuid4()->toString();
-        $folderPath = 'images/' . $uuid;
-
+        $shortUuid = substr($uuid, 0, 13);
+        $folderPath = 'images/' . $shortUuid."/";
 
         if ($request->hasFile("img")) {
 
@@ -117,8 +146,33 @@ class AnimalController extends Controller
             $fileName = $file->getClientOriginalName();
             $file->storeAs($folderPath, $fileName, 'public');
 
-            return $folderPath;
+            return $folderPath.$fileName;
         }
-        return $folderPath;
+        return null;
+    }
+
+    public function DeleteRoutePhoto($route)
+    {
+        Storage::delete($route);
+
+        Storage::deleteDirectory(dirname($route));
+    }
+
+    public function getFileName(Request $request){
+
+        if ($request->hasFile($request["img"])) {
+
+            $file = $request->file($request["img"]);
+
+            $fileName = $file->getClientOriginalName();
+
+            return $fileName;
+        }
+        return "No file sended";
+    }
+
+    public function setStringToString($string){
+
+        return strtolower(str_replace(' ', '', trim($string)));
     }
 }

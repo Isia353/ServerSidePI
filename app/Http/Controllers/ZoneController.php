@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\ApiResponse;
+use App\Http\Requests\ZoneValidator;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 
@@ -21,63 +23,81 @@ class ZoneController extends Controller
     {
         $data = Zone::all();
 
+        if ($data->isEmpty()) {
+            return ApiResponse::error("No Event Could be indexed",404);
+        }
+
         return $data;
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(ZoneValidator $request)
     {
         $data = [
             "description" => $request->description,
-            "type" => $request->title,
-            "user_id" => $request->level,
+            "type" => $request->type,
+            "user_id" => $request->user_id,
         ];
 
         $newZone = Zone::create($data);
 
+        if(!$newZone){
+            return ApiResponse::error("Coundt save the request!",509);
+        }
+
         $newZone->save();
 
-        return response()->json(['message' => 'Guardado con exito con id -> '.$newZone->id], 200);
-
+        return ApiResponse::success("All good ! with id ".$newZone->id, 200);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Zone $zone)
+    public function show(string $id)
     {
-        $data = Zone::with('animals')->find($zone->id);
+        $data = Zone::with('animals')->find($id);
 
-        return $data;
+        if (!$data){
+            return ApiResponse::error("No zone with ".$id ." id here , sorry",404);
+        }
+
+        return ApiResponse::success('Success message', 200, [$data]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Zone $zone)
+    public function update(ZoneValidator $request, Zone $zone)
     {
         $data = Zone::find($zone->id);
 
-        $data->fill($request->all());
+        $currentValues = $data->getAttributes();
 
+        if (!$data){
+            return ApiResponse::error("Coundt Get the zone to update!",509);
+        }
+
+        $data->fill([
+            "description" => $request->description ?? $currentValues["description"],
+            "type" => $request->type ?? $currentValues["type"],
+            "user_id" => $request->user_id ?? $currentValues["user_id"]
+        ]);
         $data->save();
 
-        return response()->json(['message' => 'Actualizado con exito'],200);
-
+        return ApiResponse::success("All upddate with no issue !",200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Zone $zone)
+    public function destroy(string $id)
     {
-        $task = Zone::find($zone->id);
+        $task = Zone::find($id);
 
-        Zone::destroy($task->id);
+        Zone::destroy($id);
 
-        return response()->json(['message' => 'Borrado con exito'],200);
-
+        return ApiResponse::success("Zone no longer in our database!" ,200);
     }
 }

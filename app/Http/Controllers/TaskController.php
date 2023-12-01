@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\ApiResponse;
+use App\Http\Requests\TaskValidator;
 use App\Models\Task;
 use Illuminate\Http\Request;
 
@@ -21,13 +23,18 @@ class TaskController extends Controller
     {
         $data = Task::all();
 
+
+        if ($data->isEmpty()) {
+            return ApiResponse::error("No Task Could be indexed",404);
+        }
+
         return $data;
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(TaskValidator $request)
     {
 
         $data = [
@@ -39,9 +46,13 @@ class TaskController extends Controller
 
         $newTask = Task::create($data);
 
+        if(!$newTask){
+            return ApiResponse::error("Coundt save the request!",509);
+        }
+
         $newTask->save();
 
-        return response()->json(['message' => 'Guardado con exito con id -> '.$newTask->id], 200);
+        return ApiResponse::success("All good ! with id ".$newTask->id, 200);
 
 
     }
@@ -49,40 +60,57 @@ class TaskController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Task $task)
+    public function show(string $id)
     {
-        $task = Task::with('users')->find($task->id);
+        $task = Task::with('users')->find($id);
+        if (!$task){
+            return ApiResponse::error("No task with ".$id ." id here , sorry",404);
+        }
 
+        return ApiResponse::success('Success message', 200, [$task]);
 
-        return $task;
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Task $task)
+    public function update(TaskValidator $request, string $id)
     {
+        $data = Task::find($id);
 
-        $data = Task::find($task->id);
+        $currentValues = $data->getAttributes();
 
-        $data->fill($request->all());
+        if (!$data){
+            return ApiResponse::error("Coundt Get the task to update!",509);
+        }
+
+        $data->fill([
+            "description" => $request->description ?? $currentValues["description"],
+            "title" => $request->title ?? $currentValues["title"],
+            "level" => $request->level ?? $currentValues["level"],
+            "finished" => $request->finished ?? $currentValues["finished"]
+        ]);
 
         $data->save();
 
-        return response()->json(['message' => 'Actualizado con exito'],200);
+        return ApiResponse::success("All upddated with no issue !",200);
 
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Task $task)
+    public function destroy(string $id)
     {
-        $task = Task::find($task->id);
+        $task = Task::find($id);
 
-        Task::destroy($task->id);
+        if (!$task) {
+            ApiResponse::error("Cant delete a Task that i cant find",404);
+        }
 
-        return response()->json(['message' => 'Borrado con exito'],200);
+        Task::destroy($id);
+
+        return ApiResponse::success("Task no longer in our database!" ,200);
 
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\ApiResponse;
+use App\Http\Requests\EventValidator;
 use App\Models\Event;
 use Illuminate\Http\Request;
 
@@ -23,15 +25,18 @@ class EventController extends Controller
     {
         $data = Event::all();
 
+        if ($data->isEmpty()) {
+            return ApiResponse::error("No Event Could be indexed",404);
+        }
+
         return $data;
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(EventValidator $request)
     {
-
         $data = [
             "description" => $request->description,
             "date" => $request->date,
@@ -41,50 +46,67 @@ class EventController extends Controller
 
         $newEvent = Event::create($data);
 
+        if(!$newEvent){
+            return ApiResponse::error("Coundt save the request!",509);
+        }
         $newEvent->save();
 
-        return response()->json(['message' => 'Guardado con exito con id -> '.$newEvent->id], 200);
+        return ApiResponse::success("All good ! with id ".$newEvent->id, 200);
 
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Event $event)
+    public function show(string $id)
     {
-        $data = Event::find($event->id);
+        $event = Event::find($id);
 
-        return $data;
+        if (!$event){
+            return ApiResponse::error("No event with ".$id ." id here , sorry",404);
+        }
+
+        return ApiResponse::success('Success message', 200, [$event]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Event $event)
+    public function update(EventValidator $request, string $id)
     {
-        $data = Event::find($event->id);
+        $data = Event::find($id);
 
-        // DB::table('model_has_roles')->where('model_id',$id)->delete();
+        $currentValues = $data->getAttributes();
 
-        //  $data->assignRole($request->input('roles'));
-        $data->fill($request->all());
+        if (!$data){
+            return ApiResponse::error("Coundt Get the event to update!",509);
+        }
+
+
+        $data->fill([
+            "description" => $request->description ?? $currentValues["description"],
+            "date" => $request->date ?? $currentValues["date"],
+            "booking" => $request->booking ?? $currentValues["booking"],
+        ]);
+        $data->zone_id = $currentValues["zone_id"];
 
         $data->save();
-
-        return response()->json(['message' => 'Actualizado con exito'],200);
+        return ApiResponse::success("All upddate with no issue !",200);
 
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Event $event)
+    public function destroy(string $id)
     {
-        $user = Event::find($event->id); // comprueba que existe
+        $event = Event::find($id);
 
-        Event::destroy($user->id);
+        if (!$event) {
+            ApiResponse::error("Cant delete a event that i cant find",404);
+        }
+        Event::destroy($id);
 
-        return response()->json(['message' => 'Borrado con exito'],200);
-
+        return ApiResponse::success("Event no longer in our database!" ,200);
     }
 }

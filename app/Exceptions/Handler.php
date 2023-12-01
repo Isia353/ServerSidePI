@@ -2,7 +2,11 @@
 
 namespace App\Exceptions;
 
+use App\Http\ApiResponse;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use App\Exceptions\NoModelFound;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -26,5 +30,21 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+
+
     }
+
+    public function render($request, Throwable $e)
+    {
+        if ($e instanceof NoModelFound) {
+            return response()->json([
+                'error' => 'Media not Found Exception',
+                'message' => $e->getMessage(),
+            ], 404);
+        }
+
+        return parent::render($request, $e);
+    }
+
+
 }

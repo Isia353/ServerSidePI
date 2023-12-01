@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\ApiResponse;
+use App\Http\Requests\UserValidator;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
@@ -24,70 +26,106 @@ class UserController extends Controller
     {
         $data = User::all();
 
+        if ($data->isEmpty()) {
+            return ApiResponse::error("No User Could be indexed",404);
+        }
+
         return $data;
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(UserValidator $request)
     {
 
-        $data = [
+        $userD = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
             'phone' => $request->phone,
+            "type" => $request->type
         ];
+        $user = User::create($userD);
 
-     //   $roles = Role::pluck('name','name')->all(); todos los roles
-        //si request viene sin role , por default sera visitante
+        if(!$user){
+            return ApiResponse::error("Coundt save the request!",509);
+        }
+
+        // user array no objeto
+        if ($request->has('roles')) {
+            $roles = Role::whereIn('name', $request->roles)->get();
+            $user->roles()->attach($roles);
+        } else {
+            $defaultRole = Role::where('name', 'visitor')->first();
+            $user->roles()->attach($defaultRole);
+        }
 
 
-        $user = User::create($data);
+        $user->save();
 
-        return response()->json(['message' => 'Actualizado con exito con id ->'.$user->id],200);
-
+        return ApiResponse::success("All good ! with id ".$user->id, 200);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(User $user)
+    public function show($id)
     {
-        $userRoute = User::with('zone')->find($user->id);
+        $user = User::with('zone')->find($id);
 
+        if (!$user){
+            return ApiResponse::error("No user with ".$id ." id here , sorry",404);
+        }
 
-        return $userRoute;
+        return ApiResponse::success('Success message', 200, [$user]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, User $user)
+    public function update(UserValidator $request, string $id)
     {
+        $data = User::find($id);
 
-        $data = User::find($user->id);
+        $currentValues = $data->getAttributes();
 
-       // DB::table('model_has_roles')->where('model_id',$id)->delete();
+        if (!$data){
+            return ApiResponse::error("Coundt Get the user to update!",509);
+        }
+        if($request->has('roles')){
 
-      //  $data->assignRole($request->input('roles'));
-        $data->fill($request->all());
+            $data->roles()->detach();
+
+            $data->assignRole($request->input('roles'));
+        }
+
+        $data->fill([
+            'name' => $request->name ?? $currentValues["name"],
+            'email' => $request->email ?? $currentValues["email"],
+            'password' => $request->password ?? $currentValues["password"],
+            'phone' => $request->phone ?? $currentValues["phone"],
+        ]);
 
         $data->save();
 
-        return response()->json(['message' => 'Actualizado con exito'],200);
+        return ApiResponse::success("All upddate with no issue !",200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(User $user)
+    public function destroy(string $id)
     {
-        $user = User::find($user->id); // comprueba que existe
+        $user = User::find($id); // comprueba que existe
+
+        if (!$user) {
+            ApiResponse::error("Cant delete a user that i cant find",404);
+        }
+        $user->roles()->detach();
 
         User::destroy($user->id);
 
-        return response()->json(['message' => 'Borrado con exito'],200);
+        return ApiResponse::success("Event no longer in our database!" ,200);
     }
 }

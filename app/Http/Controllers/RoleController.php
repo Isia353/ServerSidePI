@@ -33,8 +33,8 @@ class RoleController extends Controller
     public function index(Request $request): View
     {
         $roles = Role::orderBy('id','DESC')->paginate(5);
-        return view('roles.index',compact('roles'))
-            ->with('i', ($request->input('page', 1) - 1) * 5);
+
+        return $roles;
     }
 
     /**
@@ -42,11 +42,6 @@ class RoleController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-  /*  public function create(): View
-    {
-        $permission = Permission::get();
-        return view('roles.create',compact('permission'));
-    }*/
 
     /**
      * Store a newly created resource in storage.
@@ -82,23 +77,6 @@ class RoleController extends Controller
 
         return view('roles.show',compact('role','rolePermissions'));
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-   /* public function edit($id): View
-    {
-        $role = Role::find($id);
-        $permission = Permission::get();
-        $rolePermissions = DB::table("role_has_permissions")->where("role_has_permissions.role_id",$id)
-            ->pluck('role_has_permissions.permission_id','role_has_permissions.permission_id')
-            ->all();
-
-        return view('roles.edit',compact('role','permission','rolePermissions'));
-    }*/
 
     /**
      * Update the specified resource in storage.
